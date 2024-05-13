@@ -290,7 +290,7 @@ function drawGorillaLeftArm(player) {
   ctx.beginPath()
   ctx.moveTo(-14, 50)
   if (state.phase === 'aiming' && state.currentPlayer === 1 && player === 1) {
-    ctx.quadraticCurveTo(-44, 63, -28, 107)
+    ctx.quadraticCurveTo(-44, 63, -28 - state.bomb.velocity.x / 6.25, 107 - state.bomb.velocity.y / 6.25)
   } else if (state.phase === 'celebrating' && state.currentPlayer === player) {
     ctx.quadraticCurveTo(-44, 63, -28, 107)
   } else {
@@ -305,7 +305,7 @@ function drawGorillaRightArm(player) {
   ctx.beginPath()
   ctx.moveTo(+14, 50)
   if (state.phase === 'aiming' && state.currentPlayer === 2 && player === 2) {
-    ctx.quadraticCurveTo(+44, 63, +28, 107)
+    ctx.quadraticCurveTo(+44, 63, +28 - state.bomb.velocity.x / 6.25, 107 - state.bomb.velocity.y / 6.25)
   } else if (state.phase === 'celebrating' && state.currentPlayer === player) {
     ctx.quadraticCurveTo(+44, 63, +28, 107)
   } else {
@@ -317,6 +317,20 @@ function drawGorillaRightArm(player) {
 function drawBomb() {
   ctx.save()
   ctx.translate(state.bomb.x, state.bomb.y)
+
+  if (state.phase === 'aiming') {
+    ctx.translate(-state.bomb.velocity.x / 6.25, -state.bomb.velocity.y / 6.25)
+
+    //draw throwing trajectory
+    ctx.strokestyle = 'rgba(255,255,255,0.7)'
+    ctx.setLineDash([3, 8])
+    ctx.lineWidth = 3
+
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.lineTo(state.bomb.velocity.x, state.bomb.velocity.y)
+    ctx.stroke()
+  }
 
   //draw circle
   ctx.fillStyle = 'white'

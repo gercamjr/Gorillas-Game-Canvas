@@ -1,18 +1,67 @@
 // The state of the game
 let state = {}
+let isDragging = false
+let dragStartX = undefined
+let dragStartY = undefined
 
 // the main canvas element and its drawing context
 const canvas = document.getElementById('game')
+
+// left info panel
+const angle1DOM = document.querySelector('#info-left .angle')
+const velocity1DOM = document.querySelector('#info-left .velocity')
+
+// right info panel
+const angle2DOM = document.querySelector('#info-right .angle')
+const velocity2DOM = document.querySelector('#info-right .velocity')
+
+// the bomb's grab area
+const bombGrabAreaDOM = document.getElementById('bomb-grab-area')
+
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 const ctx = canvas.getContext('2d')
 
+// Event Handlers
 window.addEventListener('resize', () => {
   canvas.width = window.innerWidth
   canvas.height = window.innerHeight
   calculateScale()
   initializeBombPosition()
   draw()
+})
+
+// mouse events
+bombGrabAreaDOM.addEventListener('mousedown', (event) => {
+  if (state.phase === 'aiming') {
+    isDragging = true
+    dragStartX = event.clientX
+    dragStartY = event.clientY
+
+    document.body.style.cursor = 'grabbing'
+  }
+})
+
+window.addEventListener('mousemove', (event) => {
+  if (isDragging) {
+    let deltaX = event.clientX - dragStartX
+    let deltaY = event.clientY - dragStartY
+
+    state.bomb.velocity.x = -deltaX
+    state.bomb.velocity.y = deltaY
+    setInfo(deltaX, deltaY)
+
+    draw()
+  }
+})
+
+window.addEventListener('mouseup', (event) => {
+  if (isDragging) {
+    isDragging = false
+    document.body.style.cursor = 'default'
+
+    throwBomb()
+  }
 })
 
 newGame()
@@ -114,6 +163,13 @@ function initializeBombPosition() {
 
   state.bomb.velocity.x = 0
   state.bomb.velocity.y = 0
+
+  // initialize the position of the grab area in HTML
+  const grabAreaRadius = 15
+  const left = state.bomb.x * state.scale - grabAreaRadius
+  const bottom = state.bomb.y * state.scale - grabAreaRadius
+  bombGrabAreaDOM.style.left = `${left}px`
+  bombGrabAreaDOM.style.bottom = `${bottom}px`
 }
 
 function draw() {
@@ -313,4 +369,19 @@ function drawGorillaFace(player) {
   }
 
   ctx.stroke()
+}
+
+// bomb velocity angle info
+function setInfo(deltaX, deltaY) {
+  const hypotenuse = Math.sqrt(deltaX ** 2 + deltaY ** 2)
+  const angleInRadians = Math.asin(deltaY / hypotenuse)
+  const angleInDegrees = (angleInRadians / Math.PI) * 180
+
+  if (state.currentPlayer === 1) {
+    angle1DOM.innerText = Math.round(angleInDegrees)
+    velocity1DOM.innerText = Math.round(hypotenuse)
+  } else {
+    angle2DOM.innerText = Math.round(angleInDegrees)
+    velocity2DOM.innerText = Math.round(hypotenuse)
+  }
 }

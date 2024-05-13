@@ -57,7 +57,33 @@ function generateBackgroundBuilding(index) {
   state.backgroundBuildings.push({ x, width, height })
 }
 
-function generateBuilding() {}
+function generateBuilding(index) {
+  const previousBuilding = state.buildings[index - 1]
+  const x = previousBuilding ? previousBuilding.x + previousBuilding.width + 4 : 0
+
+  const minWidth = 80
+  const maxWidth = 130
+  const width = minWidth + Math.random() * (maxWidth - minWidth)
+
+  const platformWithGorilla = index === 1 || index === 6
+
+  const minHeight = 40
+  const maxHeight = 300
+  const minHeightGorilla = 30
+  const maxHeightGorilla = 150
+
+  const height = platformWithGorilla
+    ? minHeightGorilla + Math.random() * (maxHeightGorilla - minHeightGorilla)
+    : minHeight + Math.random() * (maxHeight - minHeight)
+
+  const lightsOn = []
+  for (let i = 0; i < 50; i++) {
+    const light = Math.random() <= 0.33 ? true : false
+    lightsOn.push(light)
+  }
+
+  state.buildings.push({ x, width, height, lightsOn })
+}
 
 function initializeBombPosition() {}
 
@@ -105,3 +131,67 @@ function drawBackgroundBuildings() {
 function throwBomb() {}
 
 function animate(timestamp) {}
+
+function drawBuildings() {
+  state.buildings.forEach((building) => {
+    //draw a building
+    ctx.fillStyle = '#4A3C68'
+    ctx.fillRect(building.x, 0, building.width, building.height)
+
+    // draw windows
+    const windowWidth = 10
+    const windowHeight = 12
+    const gap = 15
+
+    const numberOfFloors = Math.ceil((building.height - gap) / (windowHeight + gap))
+    const numberOfRoomsPerFloor = Math.floor((building.width - gap) / (windowWidth + gap))
+
+    for (let floor = 0; floor < numberOfFloors; floor++) {
+      for (let room = 0; room < numberOfRoomsPerFloor; room++) {
+        if (building.lightsOn[floor * numberOfRoomsPerFloor + room]) {
+          ctx.save()
+          ctx.translate(building.x + gap, building.height - gap)
+          ctx.scale(1, -1)
+
+          const x = room * (windowWidth + gap)
+          const y = floor * (windowHeight + gap)
+
+          ctx.fillStyle = '#EBB6A2'
+          ctx.fillRect(x, y, windowWidth, windowHeight)
+
+          ctx.restore()
+        }
+      }
+    }
+  })
+}
+
+function drawGorilla(player) {
+  ctx.save()
+  const building = player === 1 ? state.buildings.at(1) : state.buildings.at(-2)
+
+  ctx.translate(building.x + building.width / 2, building.height)
+  drawGorillaBody()
+  drawGorillaLeftArm(player)
+  drawGorillaRightArm(player)
+}
+
+function drawGorillaBody() {
+  ctx.fillStyle = '#000'
+  ctx.beginPath()
+  ctx.moveTo(0, 15)
+  ctx.lineTo(-7, 0)
+  ctx.lineTo(-20, 0)
+  ctx.lineTo(-17, 18)
+  ctx.lineTo(-20, 44)
+
+  ctx.lineTo(-11, 77)
+  ctx.lineTo(0, 84)
+  ctx.lineTo(11, 77)
+
+  ctx.lineTo(20, 44)
+  ctx.lineTo(17, 18)
+  ctx.lineTo(20, 0)
+  ctx.lineTo(7, 0)
+  ctx.fill()
+}

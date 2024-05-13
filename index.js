@@ -7,12 +7,20 @@ canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 const ctx = canvas.getContext('2d')
 
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  calculateScale()
+  initializeBombPosition()
+  draw()
+})
+
 newGame()
 
 function newGame() {
   //reset game state
   state = {
-    phase: 'celebrating', //aiming | in flight | celebrating
+    phase: 'aiming', //aiming | in flight | celebrating
     currentPlayer: 1,
     bomb: {
       x: undefined,
@@ -24,6 +32,7 @@ function newGame() {
     backgroundBuildings: [],
     buildings: [],
     blastHoles: [],
+    scale: 1,
   }
 
   // generate background buildings
@@ -36,9 +45,17 @@ function newGame() {
     generateBuilding(i)
   }
 
+  calculateScale()
+
   initializeBombPosition()
 
   draw()
+}
+
+function calculateScale() {
+  const lastBuilding = state.buildings.at(-1)
+  const totalWidthOfTheCity = lastBuilding.x + lastBuilding.width
+  state.scale = window.innerWidth / totalWidthOfTheCity
 }
 
 function generateBackgroundBuilding(index) {
@@ -85,13 +102,26 @@ function generateBuilding(index) {
   state.buildings.push({ x, width, height, lightsOn })
 }
 
-function initializeBombPosition() {}
+function initializeBombPosition() {
+  const building = state.currentPlayer === 1 ? state.buildings.at(1) : state.buildings.at(-2)
+  const gorillaX = building.x + building.width / 2
+  const gorillaY = building.height
+  const gorillaHandOffsetX = state.currentPlayer === 1 ? -28 : 28
+  const gorillaHandOffsetY = 107
+
+  state.bomb.x = gorillaX + gorillaHandOffsetX
+  state.bomb.y = gorillaY + gorillaHandOffsetY
+
+  state.bomb.velocity.x = 0
+  state.bomb.velocity.y = 0
+}
 
 function draw() {
   ctx.save()
   // flip coordinate system upside down
   ctx.translate(0, window.innerHeight)
   ctx.scale(1, -1)
+  ctx.scale(state.scale, state.scale)
 
   //draw scene
   drawBackground()
@@ -106,13 +136,13 @@ function draw() {
 }
 
 function drawBackground() {
-  const gradient = ctx.createLinearGradient(0, 0, 0, window.innerHeight)
+  const gradient = ctx.createLinearGradient(0, 0, 0, window.innerHeight / state.scale)
   gradient.addColorStop(1, '#F8BA85')
   gradient.addColorStop(0, '#FFC28E')
 
   //draw sky
   ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
+  ctx.fillRect(0, 0, window.innerWidth / state.scale, window.innerHeight / state.scale)
 
   // draw moon
   ctx.fillStyle = 'rgba(255,255,255,0.6)'
@@ -228,7 +258,19 @@ function drawGorillaRightArm(player) {
   ctx.stroke()
 }
 
-function drawBomb() {}
+function drawBomb() {
+  ctx.save()
+  ctx.translate(state.bomb.x, state.bomb.y)
+
+  //draw circle
+  ctx.fillStyle = 'white'
+  ctx.beginPath()
+  ctx.arc(0, 0, 6, 0, 2 * Math.PI)
+  ctx.fill()
+
+  // restore transformation
+  ctx.restore()
+}
 
 function drawGorillaFace(player) {
   // face

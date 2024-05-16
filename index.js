@@ -18,6 +18,11 @@ const velocity2DOM = document.querySelector('#info-right .velocity')
 // the bomb's grab area
 const bombGrabAreaDOM = document.getElementById('bomb-grab-area')
 
+// Congratulations panel
+const congratulationsDOM = document.getElementById('congratulations')
+const winnerDOM = document.getElementById('winner')
+const newGameButtonDOM = document.getElementById('new-game')
+
 // the radius of the blast hole
 const blastHoleRadius = 10
 
@@ -33,6 +38,9 @@ window.addEventListener('resize', () => {
   initializeBombPosition()
   draw()
 })
+
+// new game button event
+newGameButtonDOM.addEventListener('click', newGame)
 
 // mouse events
 bombGrabAreaDOM.addEventListener('mousedown', (event) => {
@@ -100,6 +108,13 @@ function newGame() {
   calculateScale()
 
   initializeBombPosition()
+
+  // reset the HTML elements
+  congratulationsDOM.style.visibility = 'hidden'
+  angle1DOM.innerText = '0'
+  velocity1DOM.innerText = '0'
+  angle2DOM.innerText = '0'
+  velocity2DOM.innerText = '0'
 
   draw()
 }
@@ -580,8 +595,6 @@ function moveBomb(elapsedTime) {
 }
 
 function announceWinner() {
-  const winner = state.currentPlayer === 1 ? 'Player 1' : 'Player 2'
-  alert(`${winner} wins!`)
-
-  newGame()
+  winnerDOM.innerText = `Player ${state.currentPlayer}`
+  congratulationsDOM.style.visibility = 'visible'
 }

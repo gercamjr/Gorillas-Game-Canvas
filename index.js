@@ -12,6 +12,9 @@ let delayTimeoutID = undefined
 let simulationMode = false
 let simulationImpact = {}
 
+let numberOfBuildings = undefined
+let numberOfBackgroundBuildings = undefined
+
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
 // Settings
@@ -115,6 +118,10 @@ function newGame() {
     shift: 0,
   }
 
+  // randomly generate between 7 and 15 buildings
+  numberOfBuildings = 7 + Math.floor(Math.random() * 8)
+  numberOfBackgroundBuildings = numberOfBuildings + 9
+
   // Generate stars
   for (let i = 0; i < (window.innerWidth * window.innerHeight) / 12000; i++) {
     const x = Math.floor(Math.random() * window.innerWidth)
@@ -123,12 +130,12 @@ function newGame() {
   }
 
   // Generate background buildings
-  for (let i = 0; i < 17; i++) {
+  for (let i = 0; i < numberOfBackgroundBuildings; i++) {
     generateBackgroundBuilding(i)
   }
 
   // Generate buildings
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < numberOfBuildings; i++) {
     generateBuilding(i)
   }
 

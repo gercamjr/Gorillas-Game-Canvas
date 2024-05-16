@@ -3,6 +3,9 @@ let state = {}
 let isDragging = false
 let dragStartX = undefined
 let dragStartY = undefined
+let simulationMode = false
+let simulationImpact = {}
+let numberOfPlayers = 1
 
 // the main canvas element and its drawing context
 const canvas = document.getElementById('game')
@@ -82,6 +85,7 @@ function newGame() {
   state = {
     phase: 'aiming', //aiming | in flight | celebrating
     currentPlayer: 1,
+    round: 1,
     bomb: {
       x: undefined,
       y: undefined,
@@ -117,6 +121,8 @@ function newGame() {
   velocity2DOM.innerText = '0'
 
   draw()
+
+  if (numberOfPlayers === 0) computerThrow()
 }
 
 function calculateScale() {
@@ -234,9 +240,14 @@ function drawBackgroundBuildings() {
 }
 
 function throwBomb() {
-  state.phase = 'in flight'
-  previousAnimationTimestamp = undefined
-  requestAnimationFrame(animate)
+  if (simulationMode) {
+    previousAnimationTimestamp = 0
+    animate(16)
+  } else {
+    state.phase = 'in flight'
+    previousAnimationTimestamp = undefined
+    requestAnimationFrame(animate)
+  }
 }
 
 function animate(timestamp) {
@@ -256,13 +267,23 @@ function animate(timestamp) {
     const miss = checkFrameHit() || checkBuildingHit() // bomb hits building or goes off screen
     const hit = checkGorillaHit() // bomb hits gorilla
 
+    if (simulationMode && (hit || miss)) {
+      simulationImpact = { x: state.bomb.x, y: state.bomb.y }
+      return
+    }
+
     // handle case when bomb hits building or goes off screen
     if (miss) {
       state.currentPlayer = state.currentPlayer === 1 ? 2 : 1 //switch players
+      if (state.currentPlayer === 1) state.round++ //increment round
       state.phase = 'aiming'
       initializeBombPosition()
 
       draw()
+
+      const computerThrowsNext = numberOfPlayers === 0 || (numberOfPlayers === 1 && state.currentPlayer === 2)
+
+      if (computerThrowsNext) setTimeout(computerThrow, 50)
 
       return
     }
@@ -276,11 +297,15 @@ function animate(timestamp) {
     }
   }
 
-  draw()
+  if (!simulationMode) draw()
 
   // continue the animation loop
   previousAnimationTimestamp = timestamp
-  requestAnimationFrame(animate)
+  if (simulationMode) {
+    animate(timestamp + 16)
+  } else {
+    requestAnimationFrame(animate)
+  }
 }
 
 function checkFrameHit() {
@@ -315,7 +340,9 @@ function checkBuildingHit() {
         }
       }
 
-      state.blastHoles.push({ x: state.bomb.x, y: state.bomb.y })
+      if (!simulationMode) {
+        state.blastHoles.push({ x: state.bomb.x, y: state.bomb.y })
+      }
 
       return true // the bomb hit the building
     }
@@ -406,6 +433,7 @@ function drawGorilla(player) {
   drawGorillaLeftArm(player)
   drawGorillaRightArm(player)
   drawGorillaFace(player)
+  drawGorillaThoughtBubbles(player)
   ctx.restore()
 }
 
@@ -457,6 +485,33 @@ function drawGorillaRightArm(player) {
     ctx.quadraticCurveTo(+44, 45, +28, 12)
   }
   ctx.stroke()
+}
+
+function drawGorillaThoughtBubbles(player) {
+  if (state.phase === 'aiming') {
+    const currentPlayerIsComputer =
+      (numberOfPlayers === 0 && state.currentPlayer === 1 && player === 1) ||
+      (numberOfPlayers !== 2 && state.currentPlayer === 2 && player === 2)
+
+    if (currentPlayerIsComputer) {
+      ctx.save()
+      ctx.scale(1, -1)
+
+      ctx.font = '20px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('?', 0, -90)
+
+      ctx.font = '10px sans-serif'
+
+      ctx.rotate((5 / 100) * Math.PI)
+      ctx.fillText('?', 0, -90)
+
+      ctx.rotate((-10 / 100) * Math.PI)
+      ctx.fillText('?', 0, -90)
+
+      ctx.restore()
+    }
+  }
 }
 
 function drawBomb() {
@@ -597,4 +652,63 @@ function moveBomb(elapsedTime) {
 function announceWinner() {
   winnerDOM.innerText = `Player ${state.currentPlayer}`
   congratulationsDOM.style.visibility = 'visible'
+}
+
+function runSimulations(numberOfSimulations) {
+  let bestThrow = { velocityX: undefined, velocityY: undefined, distance: Infinity }
+  simulationMode = true
+
+  // calculating the center position of the enemy gorilla
+  const enemyBuilding =
+    state.currentPlayer === 1
+      ? state.buildings.at(-2) // second to last building
+      : state.buildings.at(1) //second building
+
+  const enemyX = enemyBuilding.x + enemyBuilding.width / 2
+  const enemyY = enemyBuilding.height + 30
+
+  for (let i = 0; i < numberOfSimulations; i++) {
+    // pick a random angle and velocity
+    const angleInDegrees = 0 + Math.random() * 90
+    const angleInRadians = (angleInDegrees / 180) * Math.PI
+    const velocity = 40 + Math.random() * 100
+
+    // calculate the x and y components of the velocity
+    const direction = state.currentPlayer === 1 ? 1 : -1
+    const velocityX = Math.cos(angleInRadians) * velocity * direction
+    const velocityY = Math.sin(angleInRadians) * velocity
+
+    initializeBombPosition()
+    state.bomb.velocity.x = velocityX
+    state.bomb.velocity.y = velocityY
+
+    throwBomb()
+
+    // calculate the distance between simulated impact and the enemy
+    const distance = Math.sqrt((enemyX - simulationImpact.x) ** 2 + (enemyY - simulationImpact.y) ** 2)
+
+    // if the current impact is closer to the enemy
+    // than any of the previous simulations then pick this one
+    if (distance < bestThrow.distance) {
+      bestThrow = { velocityX, velocityY, distance }
+    }
+  }
+  simulationMode = false
+  return bestThrow
+}
+
+function computerThrow() {
+  const numberOfSimulations = 2 + state.round * 3
+  const bestThrow = runSimulations(numberOfSimulations)
+
+  initializeBombPosition()
+  state.bomb.velocity.x = bestThrow.velocityX
+  state.bomb.velocity.y = bestThrow.velocityY
+  setInfo(bestThrow.velocityX, bestThrow.velocityY)
+
+  // draw the aiming gorilla
+  draw()
+
+  //make it look like the computer is thinking
+  setTimeout(throwBomb, 1000)
 }
